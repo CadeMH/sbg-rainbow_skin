@@ -1,0 +1,9 @@
+{
+    "name": "Rainbow_Skin",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/CadeMH/sbg-rainbow_skin",
+    "description": "Cycles through all player skin colors",
+    "dependencies": [
+        "BepInEx-BepInExPack-5.4.2304"
+    ]
+}
