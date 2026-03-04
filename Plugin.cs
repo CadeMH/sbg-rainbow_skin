@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using System.Collections;
 using UnityEngine;
@@ -13,27 +14,68 @@ namespace rainbow_skin
 	{
 		internal static ManualLogSource logger;
 
+		private ConfigEntry<KeyboardShortcut> rainbowKeybind;
+		private ConfigEntry<float> colorCycleInterval;
+
+		private Scene scene => SceneManager.GetActiveScene();
+
+		private bool _rainbowState;
 		private int _currentColorIndex;
 		private Coroutine _rainbowCoroutine;
-		private const float COLOR_CYCLE_INTERVAL = 0.5f;
 
 		private void Awake()
 		{
+
+			rainbowKeybind = Config.Bind("General", "Rainbow Skin Toggle", new KeyboardShortcut(KeyCode.F9), "Keybind to toggle rainbow skin effect");
+			colorCycleInterval = Config.Bind("General", "Color Cycle Interval", 0.5f, new ConfigDescription("Interval in seconds (0.01 - 5) for cycling rainbow colors", new AcceptableValueRange<float>(0.01f, 5f)));
+
 			logger = Logger;
 			SceneManager.sceneLoaded += OnSceneLoaded;
+			SceneManager.sceneUnloaded += OnSceneUnloaded;
 			Logger.LogMessage($"guid: {Info.Metadata.GUID}, name: {Info.Metadata.Name}, version: {Info.Metadata.Version}");
+		}
+
+
+		private void OnSceneUnloaded(Scene current)
+		{
+			// Stop coroutine when scene is unloaded to prevent errors
+			if (_rainbowCoroutine != null)
+				StopCoroutine(_rainbowCoroutine);
 		}
 
 		private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 		{
-			// Stop coroutine from previous scene
-			if (_rainbowCoroutine != null)
-				StopCoroutine(_rainbowCoroutine);
-
 			if (scene.name == "Main menu")
 				return;
 
-			_rainbowCoroutine = StartCoroutine(RainbowCycle());
+			ManageRainbow();
+		}
+
+		private void ManageRainbow()
+		{
+			if (_rainbowState)
+			{
+				_rainbowCoroutine = StartCoroutine(RainbowCycle());
+				Logger.LogInfo("Rainbow skin enabled");
+			}
+			else
+			{
+				if (_rainbowCoroutine != null){
+					StopCoroutine(_rainbowCoroutine);
+					Logger.LogInfo("Rainbow skin disabled");
+				} else {
+					Logger.LogWarning("Failed to disable rainbow skin: Coroutine not found");
+				}
+			}
+		}
+
+		private void Update()
+		{
+			if (rainbowKeybind.Value.IsDown())
+			{
+				_rainbowState = !_rainbowState;
+				ManageRainbow();
+			}
 		}
 
 		private IEnumerator RainbowCycle()
@@ -58,7 +100,7 @@ namespace rainbow_skin
 					}
 				}
 
-				yield return new WaitForSeconds(COLOR_CYCLE_INTERVAL);
+				yield return new WaitForSeconds(colorCycleInterval.Value);
 			}
 		}
 	}
